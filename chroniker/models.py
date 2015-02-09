@@ -1165,12 +1165,12 @@ class Job(models.Model):
             #next_run = self.next_run.replace(tzinfo=None)
             next_run = self.next_run
             if not self.force_run:
-                print("Determining 'next_run' for job {}...".format(self.id))
+#                 print("Determining 'next_run' for job {}...".format(self.id))
                 if next_run < timezone.now():
                     next_run = timezone.now()
                 _next_run = next_run
                 next_run = self.rrule.after(next_run)
-                print(_next_run, next_run)
+#                 print(_next_run, next_run)
                 assert next_run != _next_run, \
                     'RRule failed to increment next run datetime.'
             #next_run = next_run.replace(tzinfo=timezone.get_current_timezone()) 
@@ -1251,27 +1251,28 @@ class Job(models.Model):
             run_end_datetime = timezone.now()
             duration_seconds = (run_end_datetime - run_start_datetime)\
                 .total_seconds()
-            log = Log.objects.create(
-                job = self,
-                run_start_datetime = run_start_datetime,
-                run_end_datetime = run_end_datetime,
-                duration_seconds = duration_seconds,
-                hostname=socket.gethostname(),
-                stdout = stdout_str,
-                stderr = stderr_str,
-                success = last_run_successful,
-            )
-            
-            # Email subscribers.
-            try:
-                if last_run_successful:
-                    if self.email_success_to_subscribers:
-                        log.email_subscribers()
-                else:
-                    if self.email_errors_to_subscribers:
-                        log.email_subscribers()
-            except Exception as e:
-                print(e, file=sys.stderr)
+            if stdout_str or stderr_str:
+                log = Log.objects.create(
+                    job = self,
+                    run_start_datetime = run_start_datetime,
+                    run_end_datetime = run_end_datetime,
+                    duration_seconds = duration_seconds,
+                    hostname=socket.gethostname(),
+                    stdout = stdout_str,
+                    stderr = stderr_str,
+                    success = last_run_successful,
+                )
+                
+                # Email subscribers.
+                try:
+                    if last_run_successful:
+                        if self.email_success_to_subscribers:
+                            log.email_subscribers()
+                    else:
+                        if self.email_errors_to_subscribers:
+                            log.email_subscribers()
+                except Exception as e:
+                    print(e, file=sys.stderr)
             
             # If an exception occurs above, ensure we unmark is_running.
             lock.acquire()
